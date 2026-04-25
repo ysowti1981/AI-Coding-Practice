@@ -2,6 +2,8 @@
 
 ## Problem
 
+This is the First round of practice to prepare for the system design interview in Gentoro.
+
 Build a service that sits between an LLM-based agent and a registry of hundreds of enterprise tools — things like "create a Jira ticket," "query Salesforce contacts," "send a Slack message," etc. Each tool has a name, a natural language description, and a JSON schema for its parameters.
 
 When the agent receives a user request like _"find all open deals over $50k and notify the sales team on Slack,"_ the service needs to:
