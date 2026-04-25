@@ -122,12 +122,10 @@ class Orchestrator:
             messages.append({"role": "user", "content": tool_results})
 
         # If we hit the max iteration limit, return what we have with a warning.
-        final_text = self._extract_text(messages[-1]["content"])
         return {
-            "response": final_text,
+            "response": "[Error] Max tool-call iterations reached. Partial response may be incomplete.",
             "messages": messages,
-            "tool_calls": tool_call_log,
-            "warning": f"Max iterations ({self.max_iterations}) reached without 'end_turn'."
+            "tool_calls": tool_call_log
         }
 
     @staticmethod
