@@ -1,8 +1,9 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from RAG_Tool_Calling.llm_client import LLMClient
 from RAG_Tool_Calling.tool_executer import ToolExecuter
 from RAG_Tool_Calling.tool_registry import ToolRegistry
+from RAG_Tool_Calling.tracer import Tracer
 
 
 class Orchestrator:
@@ -21,6 +22,7 @@ class Orchestrator:
         executer: ToolExecuter,
         top_k: int = 5,
         max_iterations: int = 10,
+        tracer: Optional[Tracer] = None,
     ):
 
         self.tool_registry = registry
@@ -28,6 +30,7 @@ class Orchestrator:
         self.tool_executer = executer
         self.top_k = top_k
         self.max_iterations = max_iterations
+        self.tracer = tracer
 
     def run(
         self,
@@ -60,6 +63,11 @@ class Orchestrator:
         # stable within a turn. Re-retrieving per iteration would add latency
         # without meaningfully improving tool selection.
 
+        run_span = None
+        if self.tracer:
+            run_span = self.tracer.start_span("orchestrator.run")
+            run_span.set_attribute("query", query)
+
         candidate_tools = self.tool_registry.search(query, top_k=self.top_k)
         # build a quick lookup so we can resolve names -> tool objects
         tool_by_name = {tool.name: tool for tool in candidate_tools}
@@ -69,13 +77,30 @@ class Orchestrator:
         # Inner loop: the LLM may need multiple tool calls to answer one query.
         # This is distinct from multi-turn (which is multiple user messages).
 
-        for _ in range(self.max_iterations):
+        for iteration in range(self.max_iterations):
+            iter_span = None
+            if self.tracer:
+                iter_span = self.tracer.start_span(f"iteration.{iteration}")
+
+            llm_span = None
+            if self.tracer:
+                llm_span = self.tracer.start_span("llm.complete")
+
             response = self.llm_client.complete(messages, candidate_tools)
+
+            if self.tracer and llm_span:
+                llm_span.set_attribute("stop_reason", response.stop_reason)
+                self.tracer.end_span(llm_span)
 
             messages.append({"role": "assistant", "content": response.content})
             # stop_reson = "end_turn" means the model is done - no more tools
             if response.stop_reason == "end_turn":
                 final_text = self._extract_text(response.content)
+                if self.tracer and iter_span:
+                    self.tracer.end_span(iter_span)
+                if self.tracer and run_span:
+                    run_span.set_attribute("iterations", iteration + 1)
+                    self.tracer.end_span(run_span)
                 return {
                     "response": final_text,
                     "messages": messages,
@@ -103,8 +128,18 @@ class Orchestrator:
                     })
                     continue
                 else:
+                    tool_span = None
+                    if self.tracer:
+                        tool_span = self.tracer.start_span(f"tool.{block.name}")
+                        tool_span.set_attribute("arguments", block.input)
+
                     result = self.tool_executer.execute(tool, block.input)
                     result_str = str(result) if not isinstance(result, str) else result
+
+                    if self.tracer and tool_span:
+                        tool_span.set_attribute("result_preview", result_str[:200])
+                        self.tracer.end_span(tool_span)
+
                     tool_results.append({
                         "type": "tool_result",
                         "tool_use_id": block.id,
@@ -121,7 +156,13 @@ class Orchestrator:
             # Anthropic-specified format for returning tool outputs.
             messages.append({"role": "user", "content": tool_results})
 
+            if self.tracer and iter_span:
+                self.tracer.end_span(iter_span)
+
         # If we hit the max iteration limit, return what we have with a warning.
+        if self.tracer and run_span:
+            run_span.set_attribute("iterations", self.max_iterations)
+            self.tracer.end_span(run_span, status="ERROR")
         return {
             "response": "[Error] Max tool-call iterations reached. Partial response may be incomplete.",
             "messages": messages,

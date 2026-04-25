@@ -21,7 +21,9 @@ The solution is organized into these components:
 | **LLM Client** | `llm_client.py` | Wrapper around the Anthropic API for chat completions with tool-use support |
 | **Tool Executer** | `tool_executer.py` | Executes tool calls by POSTing to tool endpoints |
 | **Orchestrator** | `orchestrator.py` | Drives the full agent loop: user query → semantic tool search → LLM decides tool calls → execute → feed results back → repeat until done |
-| **Demo** | `demo.py` | Entry point demonstrating multi-turn conversation with tool use |
+| **Tracer** | `tracer.py` | OpenTelemetry-style tracing — records nested spans (name, timing, attributes, status, children) for orchestrator iterations, LLM calls, and tool calls |
+| **Safety Filter** | `safety_filter.py` | Regex-based input filter that detects prompt injection patterns (e.g. "ignore previous instructions"). Returns `{passed, reason}` so an ML-based filter can be swapped in |
+| **Demo** | `demo.py` | Entry point demonstrating multi-turn conversation with tool use, tracing, and safety filtering |
 
 ### How It Works
 
@@ -30,6 +32,8 @@ The solution is organized into these components:
 3. The `LLMClient` sends the user message and candidate tools to Claude, which decides whether to call tools or respond directly.
 4. If tools are called, the `ToolExecuter` hits the tool endpoints and results are fed back to the LLM.
 5. The loop continues until the LLM produces a final text response.
+6. A `SafetyFilter` screens each user query before it reaches the orchestrator — flagged inputs are blocked with a structured reason.
+7. A `Tracer` records the full span tree (orchestrator run → iterations → LLM calls / tool calls) for observability.
 
 ### Setup
 
