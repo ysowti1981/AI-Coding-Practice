@@ -55,3 +55,60 @@ python RAG_Tool_Calling/demo.py
 
 ### Claude Shared Link
 https://claude.ai/share/5e8688e6-001c-4d50-949b-f879387c15c1
+
+---
+
+## Problem 2: Home Automation AI Agent
+
+Build an AI agent that lets users control and monitor their house through natural language. The agent must integrate MCP (Model Context Protocol) for state management, RAG for domain knowledge, persistent conversational memory, and full OpenTelemetry observability.
+
+Given prompts like _"What is the current temperature in the living room?"_ or _"I just left, did I forget anything open?"_, the agent needs to:
+
+1. **Communicate with a state server** exclusively through MCP tool calls (never access state directly)
+2. **Retrieve domain knowledge** (house layout, device specs, safety rules, user preferences) via RAG over markdown files
+3. **Maintain conversation memory** so users can reference earlier context (e.g., "set *it* to 22")
+4. **Enforce safety rules** (e.g., reject temperatures outside 15–30 °C)
+5. **Trace the full lifecycle** with OpenTelemetry spans for LLM calls, MCP tool invocations, RAG retrieval, and memory operations
+
+### Architecture
+
+The solution is organized into these components:
+
+| Component | File | Responsibility |
+|---|---|---|
+| **Orchestrator** | `agent/orchestrator.py` | Main agent loop — wires LLM, MCP, RAG, memory, and tracing |
+| **Memory** | `agent/memory.py` | Sliding-window conversational memory for multi-turn context |
+| **RAG** | `agent/rag.py` | Chunks, embeds, and retrieves from `kb/*.md` using OpenAI embeddings and cosine similarity |
+| **Telemetry** | `agent/telemetry.py` | OpenTelemetry tracer setup and LLM I/O logging for hallucination auditing |
+| **MCP State Server** | `mcp_server/server.py` | FastMCP server exposing device tools (`get_temperature`, `set_temperature`, `get_door_status`, `set_door_status`, `get_all_status`) |
+| **State Store** | `mcp_server/state.py` | In-memory house state (temperatures, doors, garage) — single source of truth |
+| **Knowledge Base** | `kb/*.md` | Markdown files describing user profile, house layout, device specs, and safety rules |
+
+### How It Works
+
+1. The RAG pipeline indexes all `kb/*.md` files by splitting on `##` headings and embedding each chunk with OpenAI's `text-embedding-3-small`.
+2. The MCP state server launches as a subprocess over stdio, exposing tools for reading/writing house device state.
+3. On each user turn, the orchestrator retrieves the top-k relevant knowledge chunks via RAG and injects them into the LLM system prompt.
+4. The LLM (GPT-4o-mini) decides whether to call MCP tools or respond directly. Tool results are fed back for further reasoning.
+5. Conversational memory retains the last N messages so the agent can resolve references like "set *it* to 22" or "the living room is freezing."
+6. OpenTelemetry traces every operation — LLM calls, MCP tool invocations, RAG retrieval, and memory access — for debugging and hallucination auditing.
+
+### Setup
+
+```bash
+cd Gentoro_interview
+pip install -r requirements.txt
+```
+
+Create a `.env` file with your API key:
+
+```
+OPENAI_API_KEY=sk-your-key-here
+```
+
+### Run
+
+```bash
+cd Gentoro_interview
+python -m agent.orchestrator
+```
