@@ -44,6 +44,26 @@ Optimize for my understanding and speaking ability, not for code quality.
   line is the single figure that moves the decision, with its meaning attached
   in plain units — not the metric name, what it means for the customer. Tables
   support that line; they don't precede it.
+- **Introduce every new concept before using it.** The first time a metric,
+  test or technique appears — KS, total variation, macro-F1, F-beta, paired
+  bootstrap, McNemar — give it a short intro before the number, in chat and in
+  the written document alike. Four things, briefly:
+  1. **What it measures**, in one plain sentence.
+  2. **How it is computed** — the formula, and what each part does.
+  3. **A worked example on this problem's real data**, small enough to check
+     by hand.
+  4. **Why this one and not the obvious alternative** — e.g. why TV rather
+     than KS for an unordered column.
+
+  If I can't explain a statistic, I can't defend the number it produced. And a
+  document that uses a term it never defines doesn't stand on its own.
+- **Say what a step was for before giving its result.** When reporting a step,
+  open with one or two lines on what it tested and which question it answers —
+  "Step 4 checks whether someone who knows six ordinary facts about a person
+  can find them in the file and read off private details" — then the result.
+  A number reported without its question makes me reconstruct the plan from
+  memory mid-sentence, and an interviewer who joins at that point has no idea
+  why it matters. Applies in chat and in the written document.
 - **Flag the judgment calls.** Any time you make a decision I'd have to justify
   (label mapping, tie-breaking, what counts as a match, what to drop), say so
   explicitly instead of burying it. These are the questions interviewers ask.
