@@ -1,0 +1,13 @@
+{
+ "0": "O",
+ "1": "B-name",
+ "2": "I-name",
+ "3": "B-drug_name",
+ "4": "I-drug_name",
+ "5": "B-drug_amount",
+ "6": "I-drug_amount",
+ "7": "B-medical_condition",
+ "8": "I-medical_condition",
+ "9": "B-date",
+ "10": "I-date"
+}

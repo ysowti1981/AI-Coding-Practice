@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Edit(./**)",
+      "Bash(/Users/YSOWTIK/Documents/venvs/ml_torch/bin/python *)",
+      "Bash(ls *)",
+      "Bash(wc *)",
+      "Bash(head *)"
+    ],
+    "defaultMode": "acceptEdits"
+  },
+  "enabledPlugins": {
+    "databricks@claude-plugins-official": false
+  }
+}
